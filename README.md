@@ -8,3 +8,6 @@ La API básica de la v2.0 solo te permite realizar [ciertos métodos](https://de
 Debido a esto interactuamos directamente como si fuéramos un navegador, sin API y con cookies y CSRF
 
 Login basado en [instagram-scraper](https://github.com/rarcega/instagram-scraper/tree/0d064613d8ca033700d31a7ec1c7ae4a90cb3bc8)
+
+
+Y tambien debido al aburrimiento de la cuarentena...
