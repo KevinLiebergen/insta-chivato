@@ -7,7 +7,7 @@ import json
 class InstagramScraper(object):
     def __init__(self, **kwargs):
 
-        default_attr = dict(username=None, usernames=[], filename=None,
+        default_attr = dict(username=None, usernames=[], filename=None, logged_in=None,
                             login_user=None, login_pass=None, logger=None, login_text=None,
                             followings_input=False, followings_output='profiles.txt')
 
@@ -19,6 +19,7 @@ class InstagramScraper(object):
                 self.__dict__[key] = default_attr.get(key)
 
         self.session = requests.Session()
+
 
     def authenticate_with_login(self):
         """Logs in to instagram."""
@@ -32,6 +33,7 @@ class InstagramScraper(object):
         self.session.headers.update(
             {'X-CSRFToken': login.cookies['csrftoken']})
         self.cookies = login.cookies
+#        print('***** cookie de session id: {}'.format(self.cookies['sessionid']))
         self.login_text = json.loads(login.text)
 
         if self.login_text.get('authenticated') and login.status_code == 200:
@@ -39,34 +41,72 @@ class InstagramScraper(object):
             self.logged_in = True
             self.session.headers.update({'user-agent': MY_UA})
             self.rhx_gis = ""
-            print("Connected")
         else:
             print('Login failed for ' + self.login_user)
 
-    def get_following(self):
-        query_hash='d04b0a864b4b54837c0d870b0e77e076'
-        user_id = self.login_text['userId']
+
+    def count_people(self, query, edge):
         maxim = 50
 
-        '''
-curl 'https://www.instagram.com/graphql/query/?query_hash=c76146de99bb02f6415203be841dd25a&variables=%7B%22id%22%3A%22504242447%22%2C%22include_reel%22%3Atrue%2C%22fetch_mutual%22%3Atrue%2C%22first%22%3A2%7D' -H 'Cookie: sessionid=504242447%3AujedbYp2BYfxEr%3A11' 
-        '''
+        # Elige user_id del username
+        if self.username == []:
+            user_id = self.login_text['userId']
+        else:
+            url_username = '{}{}/?__a=1'.format(BASE_URL, self.username[0])
+            response = requests.get(url_username)
+            user_id = response.json()['graphql']['user']['id']
+
+        url = '{0}graphql/query/?query_hash={1}&variables=%7B%22id%22%3A%22{2}%22%2C%22include_reel%22%3Atrue%2C%22fetch_mutual%22%3Atrue%2C%22first%22%3A{3}%7D'.format(BASE_URL, query, user_id, maxim)
+        self.url_orig = url
+
+        sessionid = self.cookies['sessionid']
+
+        header = {'Cookie': 'sessionid={}'.format(sessionid) } ### Cambiar esto
+        people = []
         
+        return self.recursive_count(url, header, edge, people)
 
-        url = '{}graphql/query/?query_hash={}&variables=%7B%22id%22%3A%22{}%22%2C%22include_reel%22%3Atrue%2C%22fetch_mutual%22%3Afalse%2C%22first%22%3A{}%7D'.format(BASE_URL, query_hash, user_id, maxim)
 
-        url = 'https://www.instagram.com/graphql/query/?query_hash=c76146de99bb02f6415203be841dd25a&variables=%7B%22id%22%3A%22504242447%22%2C%22include_reel%22%3Atrue%2C%22fetch_mutual%22%3Atrue%2C%22first%22%3A2%7D'
-        header = {'Cookie': 'sessionid=504242447%3AujedbYp2BYfxEr%3A11' }
+    def recursive_count(self, url, header, edge, people):
         r = requests.get(url, headers=header)
-        print(r.content())
+
+        for user in r.json()['data']['user'][edge]['edges']:
+            people.append(user['node']['username'])
+        
+        if r.json()['data']['user'][edge]['page_info']['has_next_page'] == 'True':
+            print("otra vez")
+            # Capturas la direccion de la proxima consulta
+            after = r.json()['data']['user'][edge]['page_info']['end_cursor']
+            # [:-3] quitas el %7D que es '}'
+            url = self.url_orig[:-3] + '%22after%22%3A%22' + after + '%22%7D'
+            recursive_count(url, header, edge, people)
+        return people
 
 
-#        return following
+    def get_following(self):
+        query_hash_following='d04b0a864b4b54837c0d870b0e77e076'
+        edge = 'edge_follow'
+        return self.count_people(query_hash_following, edge)
 
 
     def get_followers(self):
+        query_hash_followers='c76146de99bb02f6415203be841dd25a'
+        edge = 'edge_followed_by'
+        return self.count_people(query_hash_followers, edge)
 
-        return followers
+
+
+    def logout(self):
+        """Logs out of instagram."""
+        if self.logged_in:
+            try:
+                logout_data = {'csrfmiddlewaretoken': self.cookies['csrftoken']}
+                self.session.post(LOGOUT_URL, data=logout_data)
+                self.authenticated = False
+                self.logged_in = False
+            except requests.exceptions.RequestException:
+                self.logger.warning('Failed to log out ' + self.login_user)
+
 
 
 def main():
@@ -83,6 +123,7 @@ def main():
         You can add all arguments you want to that file, just remember to have
         one argument per line.
     '''
+    parser.add_argument('username', help='Instagram user(s) to scrape', nargs='*')
     parser.add_argument('--login-user', '--login_user', '-u',
                         default=None, help='Instagram login user')
     parser.add_argument('--login-pass', '--login_pass', '-p',
@@ -97,7 +138,14 @@ def main():
     else:
         raise ValueError("Pon usuario y contraseña")
 
-    scraper.get_following()
+    try:
+        following = scraper.get_following()
+        print(following)
+        followers = scraper.get_followers()
+        print(followers)
+    finally:
+        scraper.logout()
+
 
 if __name__ == '__main__':
     BASE_URL = 'https://www.instagram.com/'
@@ -105,4 +153,5 @@ if __name__ == '__main__':
     MY_UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0'
     STORIES_UA = 'Instagram 123.0.0.21.114 (iPhone; CPU iPhone OS 11_4 like Mac OS X; en_US; en-US; scale=2.00; 750x1334) AppleWebKit/605.1.15'
     CHROME_WIN_UA = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36'
+    LOGOUT_URL = BASE_URL + 'accounts/logout/'
     main()
