@@ -8,8 +8,7 @@ class InstagramScraper(object):
     def __init__(self, **kwargs):
 
         default_attr = dict(username=None, usernames=[], filename=None, logged_in=None,
-                            login_user=None, login_pass=None, logger=None, login_text=None,
-                            followings_input=False, followings_output='profiles.txt')
+                            login_user=None, login_pass=None, logger=None, login_text=None)
 
         allowed_attr = list(default_attr.keys())
         default_attr.update(kwargs)
@@ -72,14 +71,14 @@ class InstagramScraper(object):
 
         for user in r.json()['data']['user'][edge]['edges']:
             people.append(user['node']['username'])
-        
-        if r.json()['data']['user'][edge]['page_info']['has_next_page'] == 'True':
-            print("otra vez")
+
+        if r.json()['data']['user'][edge]['page_info']['has_next_page'] == True:
             # Capturas la direccion de la proxima consulta
             after = r.json()['data']['user'][edge]['page_info']['end_cursor']
             # [:-3] quitas el %7D que es '}'
-            url = self.url_orig[:-3] + '%22after%22%3A%22' + after + '%22%7D'
-            recursive_count(url, header, edge, people)
+            url = self.url_orig[:-3] + '%2c%22after%22%3A%22' + after + '%22%7D'
+
+            self.recursive_count(url, header, edge, people)
         return people
 
 
@@ -95,7 +94,6 @@ class InstagramScraper(object):
         return self.count_people(query_hash_followers, edge)
 
 
-
     def logout(self):
         """Logs out of instagram."""
         if self.logged_in:
@@ -104,9 +102,15 @@ class InstagramScraper(object):
                 self.session.post(LOGOUT_URL, data=logout_data)
                 self.authenticated = False
                 self.logged_in = False
+                print("Sesion cerrada")
             except requests.exceptions.RequestException:
                 self.logger.warning('Failed to log out ' + self.login_user)
 
+
+    def compare_people(self, following, followers):
+        main_list = list(set(following) - set(followers))
+        print(main_list)
+        #return dfollowback
 
 
 def main():
@@ -140,9 +144,11 @@ def main():
 
     try:
         following = scraper.get_following()
-        print(following)
+        #print(following)
         followers = scraper.get_followers()
-        print(followers)
+        #print(followers)
+        dfollowback = scraper.compare_people(following, followers)
+        #print(dfollowback)
     finally:
         scraper.logout()
 
