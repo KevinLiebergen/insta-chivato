@@ -1,4 +1,4 @@
-# Who do not follow me back on Instagram?
+# Who doesn't follow me back on Instagram?
 
 Prueba de concepto para entender como interactuar con Instagram debido a la actualización de la nueva API v2.0, que sólo te permite interactuar si eres un [negocio o una cuenta profesional](https://developers.facebook.com/docs/instagram-api)
 
