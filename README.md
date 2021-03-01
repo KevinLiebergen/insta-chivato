@@ -16,15 +16,15 @@ Sustituir `user` y `password` por sus credenciales, mantener las comillas simple
 <br>`$ python3 insta-scra.py -u='user' -p='password'`
 
 #### Método 2
-Tambien puede crear un fichero `insta_args.txt` con el siguiente contenido:
+Tambien puede crear un fichero `insta_args.txt` con el siguiente contenido (__sin comillas__):
 ```
--u=usuario
+-u=@usuario
 -p=password
 ```
 
 Y ejecutar el siguiente comando:
 <br>`$ python3 insta-scra.py @insta_args.txt`
 
-Ver información acerca de una cuenta ajena (la cuenta sin el símbolo arroba)
+Ver información acerca de una cuenta ajena (la cuenta __sin el símbolo arroba__)
 <br>`$ python3 insta-scra.py @insta_args.txt <user>`
 
