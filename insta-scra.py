@@ -54,6 +54,7 @@ class InstagramScraper(object):
         else:
             url_username = '{}{}/?__a=1'.format(BASE_URL, self.username[0])
             response = requests.get(url_username)
+            print(response)
             user_id = response.json()['graphql']['user']['id']
 
         url = '{0}graphql/query/?query_hash={1}&variables=%7B%22id%22%3A%22{2}%22%2C%22include_reel%22%3Atrue%2C%22fetch_mutual%22%3Atrue%2C%22first%22%3A{3}%7D'.format(BASE_URL, query, user_id, maxim)
